@@ -3,6 +3,7 @@ Il s'agit d'un programme simple pour héberger et automatiser un bot slime pour 
 
 ## Caractéristiques
 - Envoi automatique sur ton island.
+- Visite une island
 - Configuration simplifiée.
 
 ## Vous avez besoin
@@ -33,6 +34,8 @@ Il s'agit d'un programme simple pour héberger et automatiser un bot slime pour 
     - `port` - port du serveur auquel se connecter (le plus souvent `25565`).
 - `account`:
     - `username` - Email de votre compte Microsoft.
+- `visit`:
+    - `username` - Pseudo de la personne que vous voulez que le bot visite.
 - `bot`:
     - `logAllMessages` - s'il est défini sur `true`, enregistre tous les messages que le bot reçoit dans la console.
     - `logTime` - si défini sur `true`, enregistre l'heure de tous les événements du bot dans la console.
