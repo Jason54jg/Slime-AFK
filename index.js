@@ -45,25 +45,25 @@ bot.on("message", event => {
     if (message.includes("An exception occurred in your connection, so you were put in the SkyBlock Lobby!") || message.includes("Out of sync, check your internet connection!")) {
     log(`Problème de connexion au serveur (${bot.username})`);
         setTimeout(() => bot.chat("/skyblock"), 70000);
-        setTimeout(() => bot.chat("/visit "+config.visit.username), 80000);
+        setTimeout(() => bot.chat("/visit " + config.visit.username), 80000);
     }
     if (message.includes("[Important] This server will restart soon: Scheduled Restart")) {
     log(`[Important] Ce serveur va bientôt redémarrer: Redémarrage planifié (${bot.username})`);
         setTimeout(() => bot.chat("/skyblock"), 70000);
-        setTimeout(() => bot.chat("/visit "+config.visit.username), 80000);
+        setTimeout(() => bot.chat("/visit " + config.visit.username), 80000);
     }
     if (message.includes("This server will restart soon: Game Update")) {
     log(`Ce serveur va bientôt redémarrer: mise à jour du jeu (${bot.username})`);
         setTimeout(() => bot.chat("/skyblock"), 40000);
-        setTimeout(() => bot.chat("/visit "+config.visit.username), 42000);
+        setTimeout(() => bot.chat("/visit " + config.visit.username), 42000);
     }
     if (message.includes("Evacuating to Hub...")) {
     log(`Évacuation vers le hub (${bot.username})`);
-        setTimeout(() => bot.chat("/visit "+config.visit.username), 10000);
+        setTimeout(() => bot.chat("/visit " + config.visit.username), 10000);
     }
     if (message.includes("Sending to server")) {
     log(`Envoi au serveur (${bot.username})`);
-        setTimeout(() => bot.chat("/visit "+config.visit.username), 10000);
+        setTimeout(() => bot.chat("/visit " + config.visit.username), 10000);
     }
     if (message.includes("Warping you to your SkyBlock island...")) {
     log(`Vous téléporte sur votre île SkyBlock (${bot.username})`);
