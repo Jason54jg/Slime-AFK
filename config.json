@@ -6,6 +6,9 @@
     "account": {
         "username": "email"
     },
+    "visit":{
+        "username":"Axe_Tv"
+    },
     "bot": {
         "logAllMessages": false,
         "logTime": true
