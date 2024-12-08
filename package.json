@@ -1,6 +1,6 @@
 {
   "name": "Slime-AFK",
-  "version": "0.1.0.0",
+  "version": "0.2.0.0",
   "description": "Bot AFK pour slime et autre",
   "main": "index.js",
   "scripts": {
@@ -11,6 +11,7 @@
   "dependencies": {
     "fs": "^0.0.1-security",
     "mineflayer": "^4.3.0",
-    "yesno": "^0.4.0"
+    "yesno": "^0.4.0",
+    "discord-webhook-node": "^1.1.8"
   }
 }

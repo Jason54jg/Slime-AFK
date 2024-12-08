@@ -6,11 +6,16 @@
     "account": {
         "username": "email"
     },
-    "visit":{
-        "username":"Axe_Tv"
+    "visit": {
+        "username": "Axe_Tv"
     },
     "bot": {
         "logAllMessages": false,
         "logTime": true
+    },
+    "webhook": {
+        "url": "",
+        "username": "Slime Bot Logger",
+        "avatar": "https://i.imgur.com/oBPXx0D.png"
     }
 }
