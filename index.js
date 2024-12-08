@@ -4,9 +4,11 @@ const { sendWebhookLog } = require("./src/utils/webhookLogger");
 const { createLogger } = require("./src/utils/botLogger");
 const { createMessageHandler } = require("./src/handlers/messageHandler");
 const { createWindowHandler } = require("./src/handlers/windowHandler");
+const { GameState } = require("./src/utils/gameState");
 const config = require("./config.json");
 
 const log = createLogger(config);
+const gameState = new GameState();
 
 const bot = mineflayer.createBot({
     host: config.server.ip,
@@ -16,30 +18,57 @@ const bot = mineflayer.createBot({
     auth: "microsoft",
 });
 
-// Ajouter la config au bot pour qu'elle soit accessible dans les handlers
 bot.config = config;
+bot.gameState = gameState;
 
-// Utiliser le nouveau gestionnaire de fenêtres
+// Gestionnaire d'erreurs spécifique pour les erreurs de métadonnées
+bot.on('entityMetadata', (entity, metadata) => {
+    try {
+        if (!metadata || !Array.isArray(metadata)) return;
+    } catch (error) {
+        log(`Erreur de métadonnées ignorée: ${error.message}`);
+    }
+});
+
+// Gestionnaire de fenêtres
 bot.on('windowOpen', createWindowHandler(bot, log));
 
 bot.once("login", async () => {
     await log(`Le ${bot.username} a rejoint le serveur.`);
     await sendWebhookLog(`🟢 ${bot.username} s'est connecté au serveur`, 'success');
 
-    // Initial commands after login
+    // On commence par se connecter au skyblock
     setTimeout(() => {
-        bot.chat("/skyblock");
-        log("Commande /skyblock envoyée");
+        if (gameState.canExecuteCommand('/skyblock')) {
+            bot.chat("/skyblock");
+            gameState.updateLastCommand('/skyblock');
+            log("Commande /skyblock envoyée");
+        }
     }, randomizeTimer(Timers.SKYBLOCK));
-
-    setTimeout(() => {
-        bot.chat("/visit " + config.visit.username);
-        log("Commande /visit envoyée");
-    }, randomizeTimer(Timers.VISIT_SHORT));
 });
 
 const messageHandler = createMessageHandler(bot, log, config);
-bot.on("message", messageHandler);
+bot.on("message", async (message) => {
+    const msg = message.toString().trim();
+
+    // Détection de l'arrivée sur Skyblock
+    if (msg.includes("Welcome to Hypixel SkyBlock!")) {
+        gameState.setInSkyblock(true);
+        await log("Connecté à Skyblock avec succès");
+
+        // Maintenant qu'on est sur Skyblock, on peut faire le /visit
+        setTimeout(() => {
+            if (gameState.canExecuteCommand('/visit')) {
+                bot.chat("/visit " + config.visit.username);
+                gameState.updateLastCommand('/visit');
+                log("Commande /visit envoyée");
+            }
+        }, randomizeTimer(Timers.VISIT_SHORT));
+    }
+
+    // Gestion standard des messages
+    messageHandler(message);
+});
 
 // Gestion des erreurs
 bot.on('error', async (error) => {
@@ -47,7 +76,25 @@ bot.on('error', async (error) => {
     await sendWebhookLog(`❌ Erreur: ${error.message}`, 'error');
 });
 
+bot.on('end', async () => {
+    // Reconnexion automatique après 5 secondes
+    setTimeout(() => {
+        gameState.setInSkyblock(false);
+        startBot();
+    }, 5000);
+});
+
 process.on('unhandledRejection', async (error) => {
     await log(`Erreur non gérée: ${error.message}`);
     await sendWebhookLog(`❌ Erreur non gérée: ${error.message}`, 'error');
+});
+
+// Gestion de la déconnexion propre
+process.on('SIGINT', async () => {
+    await log("Arrêt du bot...");
+    await sendWebhookLog("🔴 Arrêt du bot", "warning");
+    if (bot.connected) {
+        bot.quit();
+    }
+    process.exit(0);
 });

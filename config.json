@@ -17,5 +17,18 @@
         "url": "",
         "username": "Slime Bot Logger",
         "avatar": "https://i.imgur.com/oBPXx0D.png"
+    },
+    "cooldowns": {
+        "enabled": true,
+        "randomization": {
+            "enabled": true,
+            "variance": 0.3
+        },
+        "delays": {
+            "messageCheck": 500,
+            "windowAnalyze": 800,
+            "clickDelay": 1200,
+            "retryDelay": 2000
+        }
     }
 }
