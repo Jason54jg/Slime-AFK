@@ -16,19 +16,13 @@ const bot = mineflayer.createBot({
     username: config.account.username,
     version: "1.8.9",
     auth: "microsoft",
+    plugins: {
+        breath: false // Désactive le plugin breath
+    }
 });
 
 bot.config = config;
 bot.gameState = gameState;
-
-// Gestionnaire d'erreurs spécifique pour les erreurs de métadonnées
-bot.on('entityMetadata', (entity, metadata) => {
-    try {
-        if (!metadata || !Array.isArray(metadata)) return;
-    } catch (error) {
-        log(`Erreur de métadonnées ignorée: ${error.message}`);
-    }
-});
 
 // Gestionnaire de fenêtres
 bot.on('windowOpen', createWindowHandler(bot, log));
