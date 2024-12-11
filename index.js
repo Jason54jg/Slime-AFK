@@ -10,19 +10,25 @@ const config = require("./config.json");
 const log = createLogger(config);
 const gameState = new GameState();
 
-const bot = mineflayer.createBot({
-    host: config.server.ip,
-    port: config.server.port,
-    username: config.account.username,
-    version: "1.8.9",
-    auth: "microsoft",
-    plugins: {
-        breath: false // Désactive le plugin breath
-    }
-});
+function createBotConnection() {
+    const bot = mineflayer.createBot({
+        host: config.server.ip,
+        port: config.server.port,
+        username: config.account.username,
+        version: "1.8.9",
+        auth: "microsoft",
+        plugins: {
+            breath: false // Désactive le plugin breath
+        }
+    });
 
-bot.config = config;
-bot.gameState = gameState;
+    bot.config = config;
+    bot.gameState = gameState;
+
+    return bot;
+}
+
+let bot = createBotConnection();
 
 // Gestionnaire de fenêtres
 bot.on('windowOpen', createWindowHandler(bot, log));
@@ -71,10 +77,15 @@ bot.on('error', async (error) => {
 });
 
 bot.on('end', async () => {
+    await log("Déconnecté du serveur. Tentative de reconnexion dans 5 secondes...");
+    await sendWebhookLog("🔄 Tentative de reconnexion...", "warning");
+
+    // Reset game state
+    gameState.setInSkyblock(false);
+
     // Reconnexion automatique après 5 secondes
     setTimeout(() => {
-        gameState.setInSkyblock(false);
-        startBot();
+        bot = createBotConnection();
     }, 5000);
 });
 
