@@ -5,10 +5,48 @@ const { createLogger } = require("./src/utils/botLogger");
 const { createMessageHandler } = require("./src/handlers/messageHandler");
 const { createWindowHandler } = require("./src/handlers/windowHandler");
 const { GameState } = require("./src/utils/gameState");
+const { ConnectionManager } = require("./src/utils/connectionManager");
 const config = require("./config.json");
 
 const log = createLogger(config);
 const gameState = new GameState();
+const connectionManager = new ConnectionManager(config);
+
+function setupBot(bot) {
+    connectionManager.setCurrentBot(bot);
+
+    bot.on('windowOpen', createWindowHandler(bot, log));
+
+    bot.once("login", async () => {
+        await connectionManager.handleConnect();
+        await log(`Le ${bot.username} a rejoint le serveur.`);
+        await sendWebhookLog(`🟢 ${bot.username} s'est connecté au serveur`, 'success');
+
+        setTimeout(() => {
+            if (gameState.canExecuteCommand('/skyblock') && connectionManager.canPerformAction()) {
+                bot.chat("/skyblock");
+                gameState.updateLastCommand('/skyblock');
+                log("Commande /skyblock envoyée");
+            }
+        }, randomizeTimer(Timers.SKYBLOCK));
+    });
+
+    const messageHandler = createMessageHandler(bot, log, config, connectionManager);
+    bot.on("message", messageHandler);
+
+    bot.on('error', async (error) => {
+        await log(`Erreur du bot: ${error.message}`);
+        await sendWebhookLog(`❌ Erreur: ${error.message}`, 'error');
+    });
+
+    bot.on('end', async () => {
+        await log("Déconnecté du serveur.");
+        gameState.setInSkyblock(false);
+        await connectionManager.handleDisconnect(log, createBotConnection);
+    });
+
+    return bot;
+}
 
 function createBotConnection() {
     const bot = mineflayer.createBot({
@@ -18,83 +56,24 @@ function createBotConnection() {
         version: "1.8.9",
         auth: "microsoft",
         plugins: {
-            breath: false // Désactive le plugin breath
-        }
+            breath: false
+        },
+        connectTimeout: 30000
     });
 
     bot.config = config;
     bot.gameState = gameState;
 
-    return bot;
+    return setupBot(bot);
 }
 
 let bot = createBotConnection();
-
-// Gestionnaire de fenêtres
-bot.on('windowOpen', createWindowHandler(bot, log));
-
-bot.once("login", async () => {
-    await log(`Le ${bot.username} a rejoint le serveur.`);
-    await sendWebhookLog(`🟢 ${bot.username} s'est connecté au serveur`, 'success');
-
-    // On commence par se connecter au skyblock
-    setTimeout(() => {
-        if (gameState.canExecuteCommand('/skyblock')) {
-            bot.chat("/skyblock");
-            gameState.updateLastCommand('/skyblock');
-            log("Commande /skyblock envoyée");
-        }
-    }, randomizeTimer(Timers.SKYBLOCK));
-});
-
-const messageHandler = createMessageHandler(bot, log, config);
-bot.on("message", async (message) => {
-    const msg = message.toString().trim();
-
-    // Détection de l'arrivée sur Skyblock
-    if (msg.includes("Welcome to Hypixel SkyBlock!")) {
-        gameState.setInSkyblock(true);
-        await log("Connecté à Skyblock avec succès");
-
-        // Maintenant qu'on est sur Skyblock, on peut faire le /visit
-        setTimeout(() => {
-            if (gameState.canExecuteCommand('/visit')) {
-                bot.chat("/visit " + config.visit.username);
-                gameState.updateLastCommand('/visit');
-                log("Commande /visit envoyée");
-            }
-        }, randomizeTimer(Timers.VISIT_SHORT));
-    }
-
-    // Gestion standard des messages
-    messageHandler(message);
-});
-
-// Gestion des erreurs
-bot.on('error', async (error) => {
-    await log(`Erreur du bot: ${error.message}`);
-    await sendWebhookLog(`❌ Erreur: ${error.message}`, 'error');
-});
-
-bot.on('end', async () => {
-    await log("Déconnecté du serveur. Tentative de reconnexion dans 5 secondes...");
-    await sendWebhookLog("🔄 Tentative de reconnexion...", "warning");
-
-    // Reset game state
-    gameState.setInSkyblock(false);
-
-    // Reconnexion automatique après 5 secondes
-    setTimeout(() => {
-        bot = createBotConnection();
-    }, 5000);
-});
 
 process.on('unhandledRejection', async (error) => {
     await log(`Erreur non gérée: ${error.message}`);
     await sendWebhookLog(`❌ Erreur non gérée: ${error.message}`, 'error');
 });
 
-// Gestion de la déconnexion propre
 process.on('SIGINT', async () => {
     await log("Arrêt du bot...");
     await sendWebhookLog("🔴 Arrêt du bot", "warning");
