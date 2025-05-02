@@ -30,13 +30,9 @@ function setupBot(bot) {
                 
                 setTimeout(() => {
                     if (connectionManager.canPerformAction()) {
-                        if (config.visit.enabled) {
-                            bot.chat("/visit " + config.visit.username);
-                            log("Tentative de visite d'une île");
-                        } else {
-                            bot.chat("/is");
-                            log("Téléportation vers sa propre île");
-                        }
+                        // Vérifier si le bot est déjà sur son île
+                        bot.chat("/is");
+                        log("Vérification de la position actuelle");
                     }
                 }, randomizeTimer(Timers.VISIT_SHORT));
             }

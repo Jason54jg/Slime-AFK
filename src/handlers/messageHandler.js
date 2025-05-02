@@ -75,6 +75,16 @@ function createMessageHandler(bot, log, config, connectionManager) {
                 }
             }, randomizeTimer(Timers.VISIT_SHORT));
         }
+
+        if (message.includes("You are already on your island!")) {
+            await log("Déjà sur l'île, pas besoin de se téléporter");
+            await sendWebhookLog('🏝️ Déjà sur l\'île', 'info');
+        }
+
+        if (message.includes("You are already visiting that player!")) {
+            await log("Déjà en train de visiter cette île");
+            await sendWebhookLog('🏃 Déjà en train de visiter', 'info');
+        }
     };
 }
 
