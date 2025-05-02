@@ -15,7 +15,7 @@ function createMessageHandler(bot, log, config, connectionManager) {
             await log(message);
         }
 
-        if (message.endsWith(' the lobby!') || message.endsWith(' the lobby! <<<')) {
+        if (message.endsWith(' the lobby!') || message.includes(' the lobby! <<<')) {
             await log("Détecté dans le lobby, envoi vers Skyblock...");
             setTimeout(() => {
                 if (connectionManager.canPerformAction()) {
@@ -56,16 +56,6 @@ function createMessageHandler(bot, log, config, connectionManager) {
                     if (config.visit.enabled) {
                         bot.chat("/visit " + config.visit.username);
                         log("Tentative de visite d'une île");
-                    } else {
-                        const currentTime = Date.now();
-                        if (isFirstIsCommand || currentTime - lastIsCommandTime >= IS_COMMAND_COOLDOWN) {
-                            bot.chat("/is");
-                            lastIsCommandTime = currentTime;
-                            isFirstIsCommand = false;
-                            log("Téléportation vers sa propre île");
-                        } else {
-                            log("Cooldown de la commande /is actif, attente...");
-                        }
                     }
                 }
             }, randomizeTimer(Timers.VISIT_SHORT));
@@ -79,29 +69,25 @@ function createMessageHandler(bot, log, config, connectionManager) {
                     if (config.visit.enabled) {
                         bot.chat("/visit " + config.visit.username);
                         log("Tentative de visite d'une île");
-                    } else {
-                        const currentTime = Date.now();
-                        if (isFirstIsCommand || currentTime - lastIsCommandTime >= IS_COMMAND_COOLDOWN) {
-                            bot.chat("/is");
-                            lastIsCommandTime = currentTime;
-                            isFirstIsCommand = false;
-                            log("Téléportation vers sa propre île");
-                        } else {
-                            log("Cooldown de la commande /is actif, attente...");
-                        }
                     }
                 }
             }, randomizeTimer(Timers.VISIT_SHORT));
         }
 
-        if (message.includes("You are already on your island!")) {
-            await log("Déjà sur l'île, pas besoin de se téléporter");
-            await sendWebhookLog('🏝️ Déjà sur l\'île', 'info');
-        }
-
-        if (message.includes("You are already visiting that player!")) {
-            await log("Déjà en train de visiter cette île");
-            await sendWebhookLog('🏃 Déjà en train de visiter', 'info');
+        if (message.includes("Welcome to Hypixel Skyblock!")) {
+            setTimeout(() => {
+                if (connectionManager.canPerformAction() && !config.visit.enabled) {
+                    const currentTime = Date.now();
+                    if (isFirstIsCommand || currentTime - lastIsCommandTime >= IS_COMMAND_COOLDOWN) {
+                        bot.chat("/is");
+                        lastIsCommandTime = currentTime;
+                        isFirstIsCommand = false;
+                        log("Téléportation vers sa propre île");
+                    } else {
+                        log("Cooldown de la commande /is actif, attente...");
+                    }
+                }
+            }, randomizeTimer(Timers.VISIT_SHORT));
         }
     };
 }

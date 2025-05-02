@@ -34,14 +34,18 @@ function setupBot(bot) {
                             bot.chat("/visit " + config.visit.username);
                             log("Tentative de visite d'une île");
                         } else {
-                            const currentTime = Date.now();
-                            if (!bot.lastIsCommandTime || currentTime - bot.lastIsCommandTime >= 3600000) {
-                                bot.chat("/is");
-                                bot.lastIsCommandTime = currentTime;
-                                log("Téléportation vers sa propre île");
-                            } else {
-                                log("Cooldown de la commande /is actif, attente...");
-                            }
+                            setTimeout(() => {
+                                if (connectionManager.canPerformAction()) {
+                                    const currentTime = Date.now();
+                                    if (!bot.lastIsCommandTime || currentTime - bot.lastIsCommandTime >= 3600000) {
+                                        bot.chat("/is");
+                                        bot.lastIsCommandTime = currentTime;
+                                        log("Téléportation vers sa propre île");
+                                    } else {
+                                        log("Cooldown de la commande /is actif, attente...");
+                                    }
+                                }
+                            }, randomizeTimer(Timers.VISIT_SHORT));
                         }
                     }
                 }, randomizeTimer(Timers.VISIT_SHORT));
