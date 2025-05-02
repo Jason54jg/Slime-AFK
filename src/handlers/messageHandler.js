@@ -2,8 +2,9 @@ const { randomizeTimer, Timers } = require('../utils/timerManager');
 const { sendWebhookLog } = require('../utils/webhookLogger');
 
 function createMessageHandler(bot, log, config, connectionManager) {
-    let lastTeleportTime = 0;
-    const TELEPORT_COOLDOWN = 3600000; // 3600 secondes de cooldown entre les téléportations
+    let isFirstIsCommand = true;
+    let lastIsCommandTime = 0;
+    const IS_COMMAND_COOLDOWN = 3600000; // 1 heure de cooldown pour la commande /is
 
     return async function handleMessage(event) {
         if (!connectionManager.canPerformAction()) return;
@@ -57,12 +58,13 @@ function createMessageHandler(bot, log, config, connectionManager) {
                         log("Tentative de visite d'une île");
                     } else {
                         const currentTime = Date.now();
-                        if (currentTime - lastTeleportTime >= TELEPORT_COOLDOWN) {
+                        if (isFirstIsCommand || currentTime - lastIsCommandTime >= IS_COMMAND_COOLDOWN) {
                             bot.chat("/is");
-                            lastTeleportTime = currentTime;
+                            lastIsCommandTime = currentTime;
+                            isFirstIsCommand = false;
                             log("Téléportation vers sa propre île");
                         } else {
-                            log("Cooldown de téléportation actif, attente...");
+                            log("Cooldown de la commande /is actif, attente...");
                         }
                     }
                 }
@@ -79,12 +81,13 @@ function createMessageHandler(bot, log, config, connectionManager) {
                         log("Tentative de visite d'une île");
                     } else {
                         const currentTime = Date.now();
-                        if (currentTime - lastTeleportTime >= TELEPORT_COOLDOWN) {
+                        if (isFirstIsCommand || currentTime - lastIsCommandTime >= IS_COMMAND_COOLDOWN) {
                             bot.chat("/is");
-                            lastTeleportTime = currentTime;
+                            lastIsCommandTime = currentTime;
+                            isFirstIsCommand = false;
                             log("Téléportation vers sa propre île");
                         } else {
-                            log("Cooldown de téléportation actif, attente...");
+                            log("Cooldown de la commande /is actif, attente...");
                         }
                     }
                 }
