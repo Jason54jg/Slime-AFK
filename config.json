@@ -7,7 +7,8 @@
         "username": "email"
     },
     "visit": {
-        "username": "Axe_Tv"
+        "username": "Axe_Tv",
+        "enabled": true
     },
     "bot": {
         "logAllMessages": false,

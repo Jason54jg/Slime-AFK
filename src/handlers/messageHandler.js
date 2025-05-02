@@ -15,9 +15,8 @@ function createMessageHandler(bot, log, config, connectionManager) {
             await log("Détecté dans le lobby, envoi vers Skyblock...");
             setTimeout(() => {
                 if (connectionManager.canPerformAction()) {
-                    const command = config.bot.useIsCommand ? "/is" : "/skyblock";
-                    bot.chat(command);
-                    log(`Commande ${command} envoyée`);
+                    bot.chat("/skyblock");
+                    log("Commande /skyblock envoyée");
                 }
             }, randomizeTimer(Timers.SKYBLOCK));
             await sendWebhookLog('🔄 Redirection vers le lobby', 'info');
@@ -28,9 +27,8 @@ function createMessageHandler(bot, log, config, connectionManager) {
             await sendWebhookLog('✅ Spawn dans le Limbo réussi', 'success');
             setTimeout(() => {
                 if (connectionManager.canPerformAction()) {
-                    const command = config.bot.useIsCommand ? "/is" : "/skyblock";
-                    bot.chat(command);
-                    log(`Commande ${command} envoyée depuis le Limbo`);
+                    bot.chat("/skyblock");
+                    log("Commande /skyblock envoyée depuis le Limbo");
                 }
             }, randomizeTimer(Timers.RECONNECT_SHORT));
         }
@@ -51,8 +49,13 @@ function createMessageHandler(bot, log, config, connectionManager) {
             await sendWebhookLog('🔄 Téléportation en cours', 'info');
             setTimeout(() => {
                 if (connectionManager.canPerformAction()) {
-                    bot.chat("/visit " + config.visit.username);
-                    log("Nouvelle tentative de visite après téléportation");
+                    if (config.visit.enabled) {
+                        bot.chat("/visit " + config.visit.username);
+                        log("Tentative de visite d'une île");
+                    } else {
+                        bot.chat("/is");
+                        log("Téléportation vers sa propre île");
+                    }
                 }
             }, randomizeTimer(Timers.VISIT_SHORT));
         }
@@ -62,8 +65,13 @@ function createMessageHandler(bot, log, config, connectionManager) {
             await sendWebhookLog('🏝️ Téléportation vers l\'île SkyBlock', 'info');
             setTimeout(() => {
                 if (connectionManager.canPerformAction()) {
-                    bot.chat("/visit " + config.visit.username);
-                    log("Tentative de visite après arrivée sur l'île");
+                    if (config.visit.enabled) {
+                        bot.chat("/visit " + config.visit.username);
+                        log("Tentative de visite d'une île");
+                    } else {
+                        bot.chat("/is");
+                        log("Téléportation vers sa propre île");
+                    }
                 }
             }, randomizeTimer(Timers.VISIT_SHORT));
         }

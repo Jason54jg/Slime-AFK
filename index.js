@@ -24,10 +24,21 @@ function setupBot(bot) {
 
         setTimeout(() => {
             if (gameState.canExecuteCommand('/skyblock') && connectionManager.canPerformAction()) {
-                const command = config.bot.useIsCommand ? "/is" : "/skyblock";
-                bot.chat(command);
-                gameState.updateLastCommand(command);
-                log(`Commande ${command} envoyée`);
+                bot.chat("/skyblock");
+                gameState.updateLastCommand('/skyblock');
+                log("Commande /skyblock envoyée");
+                
+                setTimeout(() => {
+                    if (connectionManager.canPerformAction()) {
+                        if (config.visit.enabled) {
+                            bot.chat("/visit " + config.visit.username);
+                            log("Tentative de visite d'une île");
+                        } else {
+                            bot.chat("/is");
+                            log("Téléportation vers sa propre île");
+                        }
+                    }
+                }, randomizeTimer(Timers.VISIT_SHORT));
             }
         }, randomizeTimer(Timers.SKYBLOCK));
     });
