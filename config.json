@@ -11,7 +11,8 @@
     },
     "bot": {
         "logAllMessages": false,
-        "logTime": true
+        "logTime": true,
+        "useIsCommand": false
     },
     "webhook": {
         "url": "",

@@ -15,8 +15,9 @@ function createMessageHandler(bot, log, config, connectionManager) {
             await log("Détecté dans le lobby, envoi vers Skyblock...");
             setTimeout(() => {
                 if (connectionManager.canPerformAction()) {
-                    bot.chat("/skyblock");
-                    log("Commande /skyblock envoyée");
+                    const command = config.bot.useIsCommand ? "/is" : "/skyblock";
+                    bot.chat(command);
+                    log(`Commande ${command} envoyée`);
                 }
             }, randomizeTimer(Timers.SKYBLOCK));
             await sendWebhookLog('🔄 Redirection vers le lobby', 'info');
@@ -27,8 +28,9 @@ function createMessageHandler(bot, log, config, connectionManager) {
             await sendWebhookLog('✅ Spawn dans le Limbo réussi', 'success');
             setTimeout(() => {
                 if (connectionManager.canPerformAction()) {
-                    bot.chat("/skyblock");
-                    log("Commande /skyblock envoyée depuis le Limbo");
+                    const command = config.bot.useIsCommand ? "/is" : "/skyblock";
+                    bot.chat(command);
+                    log(`Commande ${command} envoyée depuis le Limbo`);
                 }
             }, randomizeTimer(Timers.RECONNECT_SHORT));
         }
