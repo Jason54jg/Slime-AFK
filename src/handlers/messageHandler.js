@@ -2,6 +2,9 @@ const { randomizeTimer, Timers } = require('../utils/timerManager');
 const { sendWebhookLog } = require('../utils/webhookLogger');
 
 function createMessageHandler(bot, log, config, connectionManager) {
+    let lastTeleportTime = 0;
+    const TELEPORT_COOLDOWN = 3600000; // 3600 secondes de cooldown entre les téléportations
+
     return async function handleMessage(event) {
         if (!connectionManager.canPerformAction()) return;
 
@@ -53,8 +56,14 @@ function createMessageHandler(bot, log, config, connectionManager) {
                         bot.chat("/visit " + config.visit.username);
                         log("Tentative de visite d'une île");
                     } else {
-                        bot.chat("/is");
-                        log("Téléportation vers sa propre île");
+                        const currentTime = Date.now();
+                        if (currentTime - lastTeleportTime >= TELEPORT_COOLDOWN) {
+                            bot.chat("/is");
+                            lastTeleportTime = currentTime;
+                            log("Téléportation vers sa propre île");
+                        } else {
+                            log("Cooldown de téléportation actif, attente...");
+                        }
                     }
                 }
             }, randomizeTimer(Timers.VISIT_SHORT));
@@ -69,8 +78,14 @@ function createMessageHandler(bot, log, config, connectionManager) {
                         bot.chat("/visit " + config.visit.username);
                         log("Tentative de visite d'une île");
                     } else {
-                        bot.chat("/is");
-                        log("Téléportation vers sa propre île");
+                        const currentTime = Date.now();
+                        if (currentTime - lastTeleportTime >= TELEPORT_COOLDOWN) {
+                            bot.chat("/is");
+                            lastTeleportTime = currentTime;
+                            log("Téléportation vers sa propre île");
+                        } else {
+                            log("Cooldown de téléportation actif, attente...");
+                        }
                     }
                 }
             }, randomizeTimer(Timers.VISIT_SHORT));
