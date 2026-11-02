@@ -1,0 +1,5 @@
+node_modules/
+logs/
+*.log
+config.local.json
+.npm-cache/

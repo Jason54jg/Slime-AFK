@@ -1,106 +1,60 @@
-const mineflayer = require("mineflayer");
-const { randomizeTimer, Timers } = require("./src/utils/timerManager");
-const { sendWebhookLog } = require("./src/utils/webhookLogger");
-const { createLogger } = require("./src/utils/botLogger");
-const { createMessageHandler } = require("./src/handlers/messageHandler");
-const { createWindowHandler } = require("./src/handlers/windowHandler");
-const { GameState } = require("./src/utils/gameState");
-const { ConnectionManager } = require("./src/utils/connectionManager");
-const config = require("./config.json");
-
-const log = createLogger(config);
-const gameState = new GameState();
-const connectionManager = new ConnectionManager(config);
-
-function setupBot(bot) {
-    connectionManager.setCurrentBot(bot);
-
-    bot.on('windowOpen', createWindowHandler(bot, log));
-
-    bot.once("login", async () => {
-        await connectionManager.handleConnect();
-        await log(`Le ${bot.username} a rejoint le serveur.`);
-        await sendWebhookLog(`🟢 ${bot.username} s'est connecté au serveur`, 'success');
-
-        setTimeout(() => {
-            if (gameState.canExecuteCommand('/skyblock') && connectionManager.canPerformAction()) {
-                bot.chat("/skyblock");
-                gameState.updateLastCommand('/skyblock');
-                log("Commande /skyblock envoyée");
-                
-                setTimeout(() => {
-                    if (connectionManager.canPerformAction()) {
-                        if (config.visit.enabled) {
-                            bot.chat("/visit " + config.visit.username);
-                            log("Tentative de visite d'une île");
-                        } else {
-                            setTimeout(() => {
-                                if (connectionManager.canPerformAction()) {
-                                    const currentTime = Date.now();
-                                    if (!bot.lastIsCommandTime || currentTime - bot.lastIsCommandTime >= 3600000) {
-                                        bot.chat("/is");
-                                        bot.lastIsCommandTime = currentTime;
-                                        log("Téléportation vers sa propre île");
-                                    } else {
-                                        log("Cooldown de la commande /is actif, attente...");
-                                    }
-                                }
-                            }, randomizeTimer(Timers.VISIT_SHORT));
-                        }
-                    }
-                }, randomizeTimer(Timers.VISIT_SHORT));
-            }
-        }, randomizeTimer(Timers.SKYBLOCK));
-    });
-
-    const messageHandler = createMessageHandler(bot, log, config, connectionManager);
-    bot.on("message", messageHandler);
-
-    bot.on('error', async (error) => {
-        await log(`Erreur du bot: ${error.message}`);
-        await sendWebhookLog(`❌ Erreur: ${error.message}`, 'error');
-    });
-
-    bot.on('end', async () => {
-        await log("Déconnecté du serveur.");
-        gameState.setInSkyblock(false);
-        await connectionManager.handleDisconnect(log, createBotConnection);
-    });
-
-    return bot;
+const mineflayer = require('mineflayer');
+const { createLogger } = require('./src/utils/botLogger');
+const { createMessageHandler } = require('./src/handlers/messageHandler');
+const { createWindowHandler } = require('./src/handlers/windowHandler');
+const { ConnectionManager } = require('./src/utils/connectionManager');
+const { Navigation } = require('./src/utils/navigation');
+const path = require('node:path');
+function loadConfig() {
+    return require(process.env.SLIME_CONFIG_PATH ? path.resolve(process.env.SLIME_CONFIG_PATH) : './config.json');
+}
+function validateConfig(settings) {
+    const port = Number(settings?.server?.port);
+    if (!settings?.server?.ip || !Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Serveur ou port Minecraft invalide.');
+    if (!settings?.account?.username || settings.account.username === 'email') throw new Error('Renseignez le compte Microsoft dans votre configuration locale.');
+    if (settings?.visit?.enabled && !/^[a-zA-Z0-9_]{1,16}$/.test(settings.visit.username || '')) throw new Error('Pseudo de visite invalide.');
+    if (!settings?.bot || !settings?.visit) throw new Error('Sections bot et visit requises dans la configuration.');
 }
 
-function createBotConnection() {
-    const bot = mineflayer.createBot({
-        host: config.server.ip,
-        port: config.server.port,
-        username: config.account.username,
-        version: "1.8.9",
-        auth: "microsoft",
-        plugins: {
-            breath: false
-        },
-        connectTimeout: 30000
-    });
-
-    bot.config = config;
-    bot.gameState = gameState;
-
-    return setupBot(bot);
-}
-
-let bot = createBotConnection();
-
-process.on('unhandledRejection', async (error) => {
-    await log(`Erreur non gérée: ${error.message}`);
-    await sendWebhookLog(`❌ Erreur non gérée: ${error.message}`, 'error');
-});
-
-process.on('SIGINT', async () => {
-    await log("Arrêt du bot...");
-    await sendWebhookLog("🔴 Arrêt du bot", "warning");
-    if (bot.connected) {
-        bot.quit();
+function startBot(settings = loadConfig(), createBot = mineflayer.createBot) {
+    validateConfig(settings);
+    const log = createLogger(settings);
+    const manager = new ConnectionManager(settings);
+    const onError = error => { void log(`Erreur du bot: ${error.message}`); };
+    function connect() {
+        const bot = createBot({ host: settings.server.ip, port: Number(settings.server.port),
+            username: settings.account.username, version: '1.8.9', auth: 'microsoft',
+            plugins: { breath: false }, connectTimeout: 30000 });
+        manager.setCurrentBot(bot);
+        bot.config = settings;
+        bot.navigation = new Navigation(bot, settings, manager, log);
+        const handle = fn => (...args) => { Promise.resolve().then(() => fn(...args)).catch(onError); };
+        bot.on('windowOpen', handle(createWindowHandler(bot, log)));
+        bot.on('message', handle(createMessageHandler(bot, log, settings, manager)));
+        bot.on('error', onError);
+        bot.once('login', handle(async () => {
+            if (manager.stopped || manager.currentBot !== bot) return;
+            manager.handleConnect();
+            await log(`Le ${bot.username} a rejoint le serveur.`);
+            bot.navigation.skyblock();
+        }));
+        bot.once('end', handle(async () => {
+            bot.navigation.stop();
+            if (manager.currentBot !== bot) return;
+            await manager.handleDisconnect(log, connect);
+        }));
+        return bot;
     }
-    process.exit(0);
-});
+    try { connect(); }
+    catch (error) { onError(error); void manager.handleDisconnect(log, connect); }
+    return manager;
+}
+if (require.main === module) {
+    let manager;
+    try { manager = startBot(); }
+    catch (error) { console.error(error.message); process.exitCode = 1; }
+    const stop = () => { manager?.stop(); };
+    process.once('SIGINT', stop);
+    process.once('SIGTERM', stop);
+}
+module.exports = { startBot };

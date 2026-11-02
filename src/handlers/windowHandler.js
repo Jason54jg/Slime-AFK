@@ -1,89 +1,37 @@
-const { randomizeTimer, Timers } = require('../utils/timerManager');
-const { sendWebhookLog, emojis } = require('../utils/webhookLogger');
-
-const MAX_RETRIES = 3;
-const RETRY_DELAY = 1000;
-
-function isPlayerHead(item) {
-    if (!item) return false;
-    return item.name === 'skull' ||
-           item.name === 'player_head' ||
-           (item.displayName && item.displayName.includes("Head"));
+const { getDelay } = require('../utils/timerManager');
+function plain(value) {
+    return (typeof value === 'string' ? value : JSON.stringify(value) || '').replace(/§[0-9a-fk-or]/gi, '').toLowerCase();
 }
-
-async function tryClickWindow(bot, slot, retries = 0) {
-    try {
-        await bot.clickWindow(slot, 0, 0);
-        return true;
-    } catch (error) {
-        if (retries < MAX_RETRIES) {
-            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
-            return tryClickWindow(bot, slot, retries + 1);
-        }
-        return false;
-    }
+function findTargetSlot(window, config) {
+    const title = plain(window.title);
+    if (!/visit|visiter/.test(title)) return -1;
+    const username = config.visit.username.toLowerCase();
+    const containsName = text => text.split(/[^a-z0-9_]+/).includes(username);
+    const limit = window.inventoryStart ?? Math.min(27, window.slots.length);
+    return window.slots.findIndex((item, index) => index < limit && item &&
+        ['skull', 'player_head'].includes(item.name) &&
+        (containsName(plain(item.customName) + ' ' + plain(item.nbt) + ' ' + plain(item.displayName)) ||
+         (index === 11 && containsName(title))));
 }
-
 function createWindowHandler(bot, log) {
-    return async function handleWindow(window) {
-        // Attendre que la fenêtre soit complètement chargée
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const targetSlot = 11;
-        const slot = window.slots[targetSlot];
-
-        // Logger le contenu pour débogage
-        const items = window.slots
-            .map((slot, index) => slot ? { index, name: slot.name } : null)
-            .filter(item => item !== null);
-
-        await log("Analyse du menu...");
-        await sendWebhookLog(
-            `${emojis.menu} Analyse du menu`,
-            'info',
-            [{ name: '📦 Items', value: `${items.length} items trouvés` }]
-        );
-
-        // Vérifier si c'est une tête de joueur
-        if (slot && isPlayerHead(slot)) {
-            await log(`Tête trouvée dans le slot ${targetSlot}`);
-
-            // Tentative de clic
-            const clickSuccess = await tryClickWindow(bot, targetSlot);
-
-            if (clickSuccess) {
-                await sendWebhookLog(
-                    `${emojis.success} Clic sur la tête réussi`,
-                    'success'
-                );
-            } else {
-                await sendWebhookLog(
-                    `${emojis.error} Échec du clic`,
-                    'error'
-                );
-
-                // Réessayer la visite
-                setTimeout(() => {
-                    bot.chat("/visit " + bot.config.visit.username);
-                    log("Nouvelle tentative de visite");
-                }, randomizeTimer(Timers.VISIT_SHORT));
+    return async window => {
+        const nav = bot.navigation;
+        if (!bot.config.visit.enabled || !nav.active()) return;
+        const slot = findTargetSlot(window, bot.config);
+        if (slot < 0) return;
+        nav.schedule('window', getDelay('WINDOW_ANALYZE', bot.config), async () => {
+            for (let attempt = 0; attempt < 3; attempt++) {
+                if (!nav.active() || bot.currentWindow !== window || findTargetSlot(window, bot.config) !== slot) return;
+                try {
+                    await bot.clickWindow(slot, 0, 0);
+                    await log('Clic sur la tête du joueur demandé réussi.');
+                    return;
+                } catch (error) {
+                    if (attempt === 2) { await log(`Échec du clic après 3 tentatives: ${error.message}`); return; }
+                    await new Promise(resolve => setTimeout(resolve, getDelay('RETRY_DELAY', bot.config)));
+                }
             }
-        } else {
-            await log("Tête non trouvée, nouvelle tentative...");
-            await sendWebhookLog(
-                `${emojis.warning} Tête non trouvée`,
-                'warning'
-            );
-
-            // Réessayer la visite
-            setTimeout(() => {
-                bot.chat("/visit " + bot.config.visit.username);
-                log("Nouvelle tentative de visite");
-            }, randomizeTimer(Timers.VISIT_SHORT));
-        }
+        });
     };
 }
-
-module.exports = {
-    createWindowHandler
-};
+module.exports = { createWindowHandler, findTargetSlot };

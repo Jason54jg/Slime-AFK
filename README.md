@@ -19,12 +19,12 @@ Il s'agit d'un programme simple pour héberger et automatiser un bot slime pour 
 - il peut être utilisé sur Windows et Linux
 
 ## Installation
-- Téléchargement de nodejs `curl -s https://deb.nodesource.com/setup_18.x | sudo bash`
+- Téléchargement de nodejs `curl -s https://deb.nodesource.com/setup_24.x | sudo bash`
 - Installation de nodejs `sudo apt install nodejs -y`
 - Installation de screen `sudo apt install screen`
 - Remplissez les champs du `config.json`.
 - cd `emplacement du bot`
-- Exécutez `npm install`.
+- Exécutez `npm ci` (Node.js 22 minimum, Node.js 24 recommandé).
 - Fait!
 
 ## Usage
@@ -72,3 +72,21 @@ Il s'agit d'un programme simple pour héberger et automatiser un bot slime pour 
 - Meilleure gestion des délais
 - Réduction des faux positifs
 - Structure de code modulaire et maintenable
+
+## Développement
+
+- `npm ci` installe les versions verrouillées.
+- `npm test` exécute les tests de régression, dont une connexion Minecraft locale.
+- `npm start` lance le bot ; Ctrl-C ou SIGTERM arrête aussi les reconnexions.
+- Pour préserver la configuration du dépôt, copiez `config.json` dans `config.local.json`, renseignez le compte et lancez `SLIME_CONFIG_PATH="$PWD/config.local.json" npm start`. Ne partagez pas les profils Microsoft ni les URL de webhook.
+- La connexion réelle nécessite une authentification Microsoft et un accès TCP au serveur Minecraft. Le proxy HTTP seul ne suffit pas.
+
+La navigation centralise les commandes et annule les actions à la déconnexion. Les visites automatiques sont limitées à trois envois par connexion. Les menus doivent contenir « Visit » ou « Visiter » dans leur titre et identifier le joueur demandé dans la tête ou le titre (slot 11). Les menus non reconnus sont ignorés ; adaptez cette reconnaissance si Hypixel change son interface. Le mode sans visite conserve la navigation vers sa propre île.
+
+Les délais `windowAnalyze` et `retryDelay` ainsi que leur variation aléatoire sont appliqués. Les anciennes clés `messageCheck`, `clickDelay` et `bot.useIsCommand` ne pilotent pas la navigation actuelle.
+
+### Vérifications et limites
+
+Les tests locaux couvrent les menus, les délais, les reconnexions, l’arrêt, les logs Discord simulés et le protocole Minecraft 1.8.9. Ils ne valident pas l’authentification Microsoft, les menus actuels d’Hypixel ni un webhook Discord réel.
+
+L’audit npm signale encore six dépendances affectées par un avis modéré sur `uuid` dans la chaîne de Mineflayer. La correction automatique proposée rétrograde Mineflayer vers 1.4.0 ; ne pas appliquer `npm audit fix --force`. Une mise à jour compatible de cette chaîne reste à suivre.

@@ -1,58 +1,45 @@
-const { sendWebhookLog } = require('./webhookLogger');
-const { ConnectionLock } = require('./connectionLock');
-
 class ConnectionManager {
     constructor(config) {
+        this.config = config;
         this.isConnected = false;
         this.isReconnecting = false;
         this.reconnectAttempts = 0;
-        this.RECONNECT_DELAY = 5000;
-        this.config = config;
-        this.lock = new ConnectionLock();
         this.currentBot = null;
+        this.stopped = false;
+        this.timer = null;
     }
-
-    setCurrentBot(bot) {
-        this.currentBot = bot;
-    }
-
-    async handleConnect() {
+    setCurrentBot(bot) { this.currentBot = bot; }
+    handleConnect() {
+        if (this.stopped) return;
         this.isConnected = true;
         this.isReconnecting = false;
         this.reconnectAttempts = 0;
-        return true;
     }
-
     async handleDisconnect(log, createBot) {
-        if (this.isReconnecting) return;
-
         this.isConnected = false;
+        if (this.stopped || this.isReconnecting) return;
         this.isReconnecting = true;
-
-        this.reconnectAttempts++;
-
-        await log(`Tentative de reconnexion #${this.reconnectAttempts} dans ${this.RECONNECT_DELAY/1000} secondes...`);
-        await sendWebhookLog(`🔄 Tentative de reconnexion #${this.reconnectAttempts}`, "warning");
-
-        setTimeout(async () => {
-            try {
-                if (this.currentBot) {
-                    this.currentBot.removeAllListeners();
-                }
-                this.isReconnecting = false;
-                await createBot();
-            } catch (error) {
-                this.isReconnecting = false;
-                await log(`Erreur lors de la tentative de reconnexion: ${error.message}`);
-                // Réessayer immédiatement en cas d'échec
-                this.handleDisconnect(log, createBot);
+        const delay = Math.min(60000, 5000 * 2 ** Math.min(this.reconnectAttempts++, 4));
+        this.timer = setTimeout(async () => {
+            this.timer = null;
+            if (this.stopped) return;
+            this.isReconnecting = false;
+            try { await createBot(); }
+            catch (error) {
+                void log(`Erreur de reconnexion: ${error.message}`);
+                void this.handleDisconnect(log, createBot);
             }
-        }, this.RECONNECT_DELAY);
+        }, delay);
+        await log(`Tentative de reconnexion #${this.reconnectAttempts} dans ${delay / 1000} secondes...`);
     }
-
-    canPerformAction() {
-        return this.isConnected && !this.isReconnecting;
+    canPerformAction() { return !this.stopped && this.isConnected && !this.isReconnecting; }
+    stop() {
+        this.stopped = true;
+        this.isConnected = false;
+        clearTimeout(this.timer);
+        this.currentBot?.navigation?.stop();
+        const bot = this.currentBot;
+        if (bot) (bot.quit || bot.end)?.call(bot);
     }
 }
-
 module.exports = { ConnectionManager };
